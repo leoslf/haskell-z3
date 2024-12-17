@@ -944,7 +944,7 @@ mkFuncDecl = liftFun3 Base.mkFuncDecl
 -- | Create a constant or function application.
 --
 -- Reference: <http://research.microsoft.com/en-us/um/redmond/projects/z3/group__capi.html#ga33a202d86bf628bfab9b6f437536cebe>
-mkApp :: MonadZ3 z3 => FuncDecl -> [AST] -> z3 AST
+mkApp :: (Foldable t, MonadZ3 z3) => FuncDecl -> t AST -> z3 AST
 mkApp = liftFun2 Base.mkApp
 
 -- | Declare and create a constant.
@@ -970,7 +970,7 @@ mkRecFuncDecl :: MonadZ3 z3 => Symbol -> [Sort] -> Sort -> z3 FuncDecl
 mkRecFuncDecl = liftFun3 Base.mkRecFuncDecl
 
 -- | Define the body of a recursive Z3 function
-addRecDef :: MonadZ3 z3 => FuncDecl -> [AST] -> AST -> z3 ()
+addRecDef :: (Foldable t, MonadZ3 z3) => FuncDecl -> t AST -> AST -> z3 ()
 addRecDef = liftFun3 Base.addRecDef
 
 -------------------------------------------------
@@ -1067,7 +1067,7 @@ mkEq = liftFun2 Base.mkEq
 -- Requires a non-empty list.
 --
 -- Reference: <http://research.microsoft.com/en-us/um/redmond/projects/z3/group__capi.html#gaa076d3a668e0ec97d61744403153ecf7>
-mkDistinct :: MonadZ3 z3 => [AST] -> z3 AST
+mkDistinct :: (Foldable t, MonadZ3 z3) => t AST -> z3 AST
 mkDistinct = liftFun1 Base.mkDistinct
 
 -- | Same as 'mkDistinct' but type-safe.
@@ -1107,13 +1107,13 @@ mkXor = liftFun2 Base.mkXor
 -- | Create an AST node representing args[0] and ... and args[num_args-1].
 --
 -- Reference: <http://research.microsoft.com/en-us/um/redmond/projects/z3/group__capi.html#gacde98ce4a8ed1dde50b9669db4838c61>
-mkAnd :: MonadZ3 z3 => [AST] -> z3 AST
+mkAnd :: (Foldable t, MonadZ3 z3) => t AST -> z3 AST
 mkAnd = liftFun1 Base.mkAnd
 
 -- | Create an AST node representing args[0] or ... or args[num_args-1].
 --
 -- Reference: <http://research.microsoft.com/en-us/um/redmond/projects/z3/group__capi.html#ga00866d16331d505620a6c515302021f9>
-mkOr :: MonadZ3 z3 => [AST] -> z3 AST
+mkOr :: Foldable t => MonadZ3 z3 => t AST -> z3 AST
 mkOr = liftFun1 Base.mkOr
 
 -------------------------------------------------
@@ -1129,13 +1129,13 @@ mkBool = liftFun1 Base.mkBool
 -- | Create an AST node representing args[0] + ... + args[num_args-1].
 --
 -- Reference: <http://research.microsoft.com/en-us/um/redmond/projects/z3/group__capi.html#ga4e4ac0a4e53eee0b4b0ef159ed7d0cd5>
-mkAdd :: MonadZ3 z3 => [AST] -> z3 AST
+mkAdd :: (Foldable t, MonadZ3 z3) => t AST -> z3 AST
 mkAdd = liftFun1 Base.mkAdd
 
 -- | Create an AST node representing args[0] * ... * args[num_args-1].
 --
 -- Reference: <http://research.microsoft.com/en-us/um/redmond/projects/z3/group__capi.html#gab9affbf8401a18eea474b59ad4adc890>
-mkMul :: MonadZ3 z3 => [AST] -> z3 AST
+mkMul :: (Foldable t, MonadZ3 z3) => t AST -> z3 AST
 mkMul = liftFun1 Base.mkMul
 
 -- | Create an AST node representing args[0] - ... - args[num_args - 1].
@@ -1143,7 +1143,7 @@ mkMul = liftFun1 Base.mkMul
 -- Requires a non-empty list.
 --
 -- Reference: <http://research.microsoft.com/en-us/um/redmond/projects/z3/group__capi.html#ga4f5fea9b683f9e674fd8f14d676cc9a9>
-mkSub :: MonadZ3 z3 => [AST] -> z3 AST
+mkSub :: (Foldable t, MonadZ3 z3) => t AST -> z3 AST
 mkSub = liftFun1 Base.mkSub
 
 -- | Same as 'mkSub' but type-safe.
@@ -1552,7 +1552,7 @@ mkConstArray = liftFun2 Base.mkConstArray
 -- | map f on the the argument arrays.
 --
 -- Reference: <http://research.microsoft.com/en-us/um/redmond/projects/z3/group__capi.html#ga9150242d9430a8c3d55d2ca3b9a4362d>
-mkMap :: MonadZ3 z3 => FuncDecl -> [AST] -> z3 AST
+mkMap :: (Foldable t, MonadZ3 z3) => FuncDecl -> t AST -> z3 AST
 mkMap = liftFun2 Base.mkMap
 
 -- | Access the array default value. Produces the default range value, for
@@ -1592,13 +1592,13 @@ mkSetDel = liftFun2 Base.mkSetDel
 -- | Take the union of a list of sets.
 --
 -- Reference: <http://research.microsoft.com/en-us/um/redmond/projects/z3/group__capi.html#ga4050162a13d539b8913200963bb4743c>
-mkSetUnion :: MonadZ3 z3 => [AST] -> z3 AST
+mkSetUnion :: (Foldable t, MonadZ3 z3) => t AST -> z3 AST
 mkSetUnion = liftFun1 Base.mkSetUnion
 
 -- | Take the intersection of a list of sets.
 --
 -- Reference: <http://research.microsoft.com/en-us/um/redmond/projects/z3/group__capi.html#ga8a8abff0ebe6aeeaa6c919eaa013049d>
-mkSetIntersect :: MonadZ3 z3 => [AST] -> z3 AST
+mkSetIntersect :: (Foldable t, MonadZ3 z3) => t AST -> z3 AST
 mkSetIntersect = liftFun1 Base.mkSetIntersect
 
 -- | Take the set difference between two sets.
@@ -1762,7 +1762,7 @@ mkSeqUnit :: MonadZ3 z3 => AST -> z3 AST
 mkSeqUnit = liftFun1 Base.mkSeqUnit
 
 -- | Concatenate sequences.
-mkSeqConcat :: MonadZ3 z3 => [AST] -> z3 AST
+mkSeqConcat :: (Foldable t, MonadZ3 z3) => t AST -> z3 AST
 mkSeqConcat = liftFun1 Base.mkSeqConcat
 
 -- | Check if prefix is a prefix of s.
@@ -1870,11 +1870,11 @@ mkReOption :: MonadZ3 z3 => AST -> z3 AST
 mkReOption = liftFun1 Base.mkReOption
 
 -- | Create the union of the regular languages.
-mkReUnion :: (Integral int, MonadZ3 z3) => int -> [AST] -> z3 AST
+mkReUnion :: (Foldable t, Integral int, MonadZ3 z3) => int -> t AST -> z3 AST
 mkReUnion = liftFun2 Base.mkReUnion
 
 -- | Create the concatenation of the regular languages.
-mkReConcat :: (Integral int, MonadZ3 z3) => int -> [AST] -> z3 AST
+mkReConcat :: (Foldable t, Integral int, MonadZ3 z3) => int -> t AST -> z3 AST
 mkReConcat = liftFun2 Base.mkReConcat
 
 -- | Create the range regular expression over two sequences of length 1.
@@ -1896,7 +1896,7 @@ mkReLoop :: (Integral int, MonadZ3 z3)
 mkReLoop = liftFun3 Base.mkReLoop
 
 -- | Create the intersection of the regular languages.
-mkReIntersect :: (Integral int, MonadZ3 z3) => int -> [AST] -> z3 AST
+mkReIntersect :: (Foldable t, Integral int, MonadZ3 z3) => int -> t AST -> z3 AST
 mkReIntersect = liftFun2 Base.mkReIntersect
 
 -- | Create the complement of the regular language.
@@ -1915,7 +1915,7 @@ mkReFull = liftFun1 Base.mkReFull
 ---------------------------------------------------------------------
 -- Quantifiers
 
-mkPattern :: MonadZ3 z3 => [AST] -> z3 Pattern
+mkPattern :: (Foldable t, MonadZ3 z3) => t AST -> z3 Pattern
 mkPattern = liftFun1 Base.mkPattern
 
 mkBound :: MonadZ3 z3 => Int -> Sort -> z3 AST
@@ -2020,14 +2020,14 @@ getDatatypeSortConstructorAccessors = liftFun1 Base.getDatatypeSortConstructorAc
 -- + ... + pn <= k@.
 --
 -- Reference: <https://z3prover.github.io/api/html/group__capi.html#gaf2501779266a6dc2738a8928d1fc858c>
-mkAtMost :: MonadZ3 z3 => [AST] -> Int -> z3 AST
+mkAtMost :: (Foldable t, MonadZ3 z3) => t AST -> Int -> z3 AST
 mkAtMost = liftFun2 Base.mkAtMost
 
 -- | At least @k@ of the arguments @ps@ may be true, i.e. encode @p1 +
 -- p2 + ... + pn >= k@.
 --
 -- Reference: <https://z3prover.github.io/api/html/group__capi.html#gaaa996ab58cf979d5849178f1d2963efb>
-mkAtLeast :: MonadZ3 z3 => [AST] -> Int -> z3 AST
+mkAtLeast :: (Foldable t, MonadZ3 z3) => t AST -> Int -> z3 AST
 mkAtLeast = liftFun2 Base.mkAtLeast
 
 -- | Return the constant declaration name as a symbol.
@@ -2192,7 +2192,7 @@ getReal = liftFun1 Base.getReal
 ---------------------------------------------------------------------
 -- Modifiers
 
-substituteVars :: MonadZ3 z3 => AST -> [AST] -> z3 AST
+substituteVars :: (Foldable t, MonadZ3 z3) => AST -> t AST -> z3 AST
 substituteVars = liftFun2 Base.substituteVars
 
 substitute :: MonadZ3 z3 => AST -> [(AST, AST)] -> z3 AST
@@ -2483,14 +2483,14 @@ funcDeclToString = liftFun1 Base.funcDeclToString
 -- | Convert the given benchmark into SMT-LIB formatted string.
 --
 -- The output format can be configured via 'setASTPrintMode'.
-benchmarkToSMTLibString :: MonadZ3 z3 =>
-                               String   -- ^ name
-                            -> String   -- ^ logic
-                            -> String   -- ^ status
-                            -> String   -- ^ attributes
-                            -> [AST]    -- ^ assumptions1
-                            -> AST      -- ^ formula
-                            -> z3 String
+benchmarkToSMTLibString :: (Foldable t, MonadZ3 z3)
+                        => String   -- ^ name
+                        -> String   -- ^ logic
+                        -> String   -- ^ status
+                        -> String   -- ^ attributes
+                        -> t AST    -- ^ assumptions
+                        -> AST      -- ^ formula
+                        -> z3 String
 benchmarkToSMTLibString = liftFun6 Base.benchmarkToSMTLibString
 
 
@@ -2985,8 +2985,8 @@ optimizePop :: MonadOptimize z3 => z3 ()
 optimizePop = liftOptimize0 Base.optimizePop
 
 -- | Check consistency and produce optimal values.
-optimizeCheck :: MonadOptimize z3
-              => [AST]      -- ^ Additional Assumptions
+optimizeCheck :: (Foldable t, MonadOptimize z3)
+              => t AST      -- ^ Additional Assumptions
               -> z3 Result
 optimizeCheck = liftOptimize1 Base.optimizeCheck
 
@@ -3032,8 +3032,8 @@ optimizeGetAssertions = liftOptimize0 Base.optimizeGetAssertions
 optimizeGetObjectives :: MonadOptimize z3 => z3 [AST]
 optimizeGetObjectives = liftOptimize0 Base.optimizeGetObjectives
 
-optimizeWithModel :: MonadOptimize z3
-                  => [AST]                -- ^ Additional Assumptions
+optimizeWithModel :: (Foldable t, MonadOptimize z3)
+                  => t AST                -- ^ Additional Assumptions
                   -> (Base.Model -> z3 a) -- ^ Extract Results
                   -> z3 (Either String a)
 optimizeWithModel assumptions f = optimizeCheck assumptions >>= \case
@@ -3112,7 +3112,7 @@ solverCheck = liftSolver0 Base.solverCheck
 -- | Check whether the assertions in the given solver and optional assumptions are consistent or not.
 --
 -- Reference: <https://z3prover.github.io/api/html/group__capi.html#ga65b2bd980519c0e873d328edcc5f9317>
-solverCheckAssumptions :: MonadZ3 z3 => [AST] -> z3 Result
+solverCheckAssumptions :: (Foldable t, MonadZ3 z3) => t AST -> z3 Result
 solverCheckAssumptions = liftSolver1 Base.solverCheckAssumptions
 
 -- | Retrieve the model for the last 'solverCheck' or 'solverCheckAssumptions'.
@@ -3203,7 +3203,7 @@ check = solverCheck
 -- | Check whether the assertions in the given solver and optional assumptions are consistent or not.
 --
 -- Alias for 'solverCheckAssumptions'
-checkAssumptions :: MonadZ3 z3 => [AST] -> z3 Result
+checkAssumptions :: (Foldable t, MonadZ3 z3) => t AST -> z3 Result
 checkAssumptions = solverCheckAssumptions
 
 -- | Call 'solverCheck' and based on the result also call 'solverGetModel'.

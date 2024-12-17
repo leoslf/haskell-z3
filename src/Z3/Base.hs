@@ -640,7 +640,7 @@ import Control.Applicative ( (<$>), (<*>), (<*), pure )
 import Control.Exception ( Exception, bracket, throw )
 import Control.Monad ( join, when, forM )
 import Data.Fixed ( Fixed, HasResolution )
-import Data.Foldable ( Foldable (..) )
+import Data.Foldable ( Foldable (..), toList )
 import Data.Int
 import Data.IORef ( IORef, newIORef, atomicModifyIORef' )
 import Data.List.NonEmpty (NonEmpty (..), nonEmpty)
@@ -1098,7 +1098,7 @@ mkTupleType ctx sym fs = do fs' <- flip zip (map snd fs) <$> mapM (mkStringSymbo
                             return $ TupleType {tupleSort, tupleCons, namedTupleProjs}
 
 -- | Create an instance of the tuple sort wrapped in 'TupleType'
-mkTuple :: Context -> TupleType -> [AST] -> IO AST
+mkTuple :: Foldable t => Context -> TupleType -> t AST -> IO AST
 mkTuple ctx TupleType{tupleCons} args = mkApp ctx tupleCons args
 
 -- | Project the i-th field of the given tuple,
@@ -1249,7 +1249,7 @@ mkFuncDecl ctx smb dom rng =
       f ptrSym domNum domArr ptrRange
 
 -- | Create a constant or function application.
-mkApp :: Context -> FuncDecl -> [AST] -> IO AST
+mkApp :: Foldable t => Context -> FuncDecl -> t AST -> IO AST
 mkApp ctx fd args = marshal z3_mk_app ctx $ \f ->
   h2c fd $ \fdPtr ->
   marshalArrayLen args $ \argsNum argsArr ->
@@ -1293,9 +1293,10 @@ mkRecFuncDecl ctx smb dom rng =
 
 -- | Define the body of a recursive function.
 -- Declare it first with mkRecFuncDecl
-addRecDef :: Context -- ^ Logical context.
+addRecDef :: Foldable t
+          => Context -- ^ Logical context.
           -> FuncDecl -- ^ Declaration of the function being defined.
-          -> [AST] -- ^ Constants to use as the function's formal arguments.
+          -> t AST -- ^ Constants to use as the function's formal arguments.
           -> AST   -- ^ Body of the function to define
           -> IO ()
 addRecDef ctx decl args body =
@@ -1393,7 +1394,7 @@ mkEq = liftFun2 z3_mk_eq
 -- That is, @and [ args!!i /= args!!j | i <- [0..length(args)-1], j <- [i+1..length(args)-1] ]@
 --
 -- Requires a non-empty list.
-mkDistinct :: Context -> [AST] -> IO AST
+mkDistinct :: Foldable t => Context -> t AST -> IO AST
 mkDistinct =
   liftAstN_err "Z3.Base.mkDistinct: empty list of expressions" z3_mk_distinct
 
@@ -1422,11 +1423,11 @@ mkXor :: Context -> AST -> AST -> IO AST
 mkXor = liftFun2 z3_mk_xor
 
 -- | Create an AST node representing args[0] and ... and args[num_args-1].
-mkAnd :: Context -> [AST] -> IO AST
+mkAnd :: Foldable t => Context -> t AST -> IO AST
 mkAnd = liftAstN z3_mk_true z3_mk_and
 
 -- | Create an AST node representing args[0] or ... or args[num_args-1].
-mkOr :: Context -> [AST] -> IO AST
+mkOr :: Foldable t => Context -> t AST -> IO AST
 mkOr = liftAstN z3_mk_false z3_mk_or
 
 -------------------------------------------------
@@ -1441,17 +1442,17 @@ mkBool ctx True  = mkTrue  ctx
 -- Arithmetic: Integers and Reals
 
 -- | Create an AST node representing args[0] + ... + args[num_args-1].
-mkAdd :: Context -> [AST] -> IO AST
-mkAdd ctx = maybe (mkInteger ctx 0) (liftAstN1 z3_mk_add ctx) . nonEmpty
+mkAdd :: Foldable t => Context -> t AST -> IO AST
+mkAdd ctx = maybe (mkInteger ctx 0) (liftAstN1 z3_mk_add ctx) . nonEmpty . toList
 
 -- | Create an AST node representing args[0] * ... * args[num_args-1].
-mkMul :: Context -> [AST] -> IO AST
-mkMul ctx = maybe (mkInteger ctx 1) (liftAstN1 z3_mk_mul ctx) . nonEmpty
+mkMul :: Foldable t => Context -> t AST -> IO AST
+mkMul ctx = maybe (mkInteger ctx 1) (liftAstN1 z3_mk_mul ctx) . nonEmpty . toList
 
 -- | Create an AST node representing args[0] - ... - args[num_args - 1].
 --
 -- Requires a non-empty list.
-mkSub :: Context -> [AST] -> IO AST
+mkSub :: Foldable t => Context -> t AST -> IO AST
 mkSub = liftAstN_err "Z3.Base.mkSub: empty list of expressions" z3_mk_sub
 
 -- | Same as 'mkSub' but type-safe.
@@ -1757,10 +1758,11 @@ mkConstArray = liftFun2 z3_mk_const_array
 -- The /n/ nodes args must be of array sorts [domain -> range_i].
 -- The function declaration /f/ must have type range_1 .. range_n -> range.
 -- The sort of the result is [domain -> range].
-mkMap :: Context
-        -> FuncDecl   -- ^ Function /f/.
-        -> [AST]      -- ^ List of arrays.
-        -> IO AST
+mkMap :: Foldable t
+      => Context
+      -> FuncDecl   -- ^ Function /f/.
+      -> t AST      -- ^ List of arrays.
+      -> IO AST
 mkMap ctx fun args = marshal z3_mk_map ctx $ \f ->
   h2c fun $ \funPtr ->
   marshalArrayLen args $ \argsNum argsArr ->
@@ -1805,13 +1807,13 @@ mkSetDel :: Context
 mkSetDel = liftFun2 z3_mk_set_del
 
 -- | Take the union of a list of sets.
-mkSetUnion :: Context -> [AST] -> IO AST
+mkSetUnion :: Foldable t => Context -> t AST -> IO AST
 mkSetUnion ctx args = marshal z3_mk_set_union ctx $ \f ->
   marshalArrayLen args $ \argsNum argsArr ->
     f argsNum argsArr
 
 -- | Take the intersection of a list of sets.
-mkSetIntersect :: Context -> [AST] -> IO AST
+mkSetIntersect :: Foldable t => Context -> t AST -> IO AST
 mkSetIntersect ctx args = marshal z3_mk_set_intersect ctx $ \f ->
   marshalArrayLen args $ \argsNum argsArr ->
     f argsNum argsArr
@@ -1987,7 +1989,7 @@ mkSeqUnit :: Context -> AST -> IO AST
 mkSeqUnit = liftFun1 z3_mk_seq_unit
 
 -- | Concatenate sequences.
-mkSeqConcat :: Context -> [AST] -> IO AST
+mkSeqConcat :: Foldable t => Context -> t AST -> IO AST
 mkSeqConcat c as
   | null as = error "Z3.Base.mkSeqConcet: empty list of expressions"
   | otherwise         = marshal z3_mk_seq_concat c $ marshalArrayLen as
@@ -2099,14 +2101,14 @@ mkReOption :: Context -> AST -> IO AST
 mkReOption = liftFun1 z3_mk_re_option
 
 -- | Create the union of the regular languages.
-mkReUnion :: (Integral int) => Context -> int -> [AST] -> IO AST
+mkReUnion :: (Foldable t, Integral int) => Context -> int -> t AST -> IO AST
 mkReUnion c i as
   | i <  0            = error "Z3.Base.mkReUnion: negative size"
   | i >= 0 && null as = error "Z3.Base.mkReUnion: empty list of expressions"
   | otherwise         = marshal z3_mk_re_union c $ marshalArrayLen as
 
 -- | Create the concatenation of the regular languages.
-mkReConcat :: (Integral int) => Context -> int -> [AST] -> IO AST
+mkReConcat :: (Foldable t, Integral int) => Context -> int -> t AST -> IO AST
 mkReConcat c i as
   | i <  0            = error "Z3.Base.mkReConcat: negative size"
   | i >= 0 && null as = error "Z3.Base.mkReConcat: empty list of expressions"
@@ -2135,7 +2137,7 @@ mkReLoop c a i j
   | otherwise = liftFun3 z3_mk_re_loop c a i j
 
 -- | Create the intersection of the regular languages.
-mkReIntersect :: (Integral int) => Context -> int -> [AST] -> IO AST
+mkReIntersect :: (Foldable t, Integral int) => Context -> int -> t AST -> IO AST
 mkReIntersect c i as
   | i <  0            = error "Z3.Base.mkReIntersect: negative size"
   | i >= 0 && null as = error "Z3.Base.mkReIntersect: empty list of expressions"
@@ -2169,11 +2171,13 @@ mkReFull = liftFun1 z3_mk_re_full
 --
 -- In general, one can pass in a list of (multi-)patterns in the quantifier
 -- constructor.
-mkPattern :: Context
-              -> [AST]        -- ^ Terms.
-              -> IO Pattern
-mkPattern _ [] = error "Z3.Base.mkPattern: empty list of expressions"
-mkPattern c es = marshal z3_mk_pattern c $ marshalArrayLen es
+mkPattern :: Foldable t
+          => Context
+          -> t AST        -- ^ Terms.
+          -> IO Pattern
+mkPattern c es
+  | null es = error "Z3.Base.mkPattern: empty list of expressions"
+  | otherwise = marshal z3_mk_pattern c $ marshalArrayLen es
 
 -- | Create a bound variable.
 --
@@ -2446,21 +2450,21 @@ getDatatypeSortConstructorAccessors c dtSort =
 
 -- TODO: Z3_get_relation_column
 
-mkAtMost :: Context -> [AST] -> Int -> IO AST
-mkAtMost _ctx [] _n = error "Z3.Base.mkAtMost: empty list of expressions"
-mkAtMost  ctx es  n =
-  marshal z3_mk_atmost ctx $ \f ->
-  marshalArrayLen es $ \esLen esArr ->
-  h2c n $ \n' ->
-  f esLen esArr n'
+mkAtMost :: Foldable t => Context -> t AST -> Int -> IO AST
+mkAtMost ctx es n
+  | null es = error "Z3.Base.mkAtMost: empty list of expressions"
+  | otherwise = marshal z3_mk_atmost ctx $ \f ->
+      marshalArrayLen es $ \esLen esArr ->
+      h2c n $ \n' ->
+      f esLen esArr n'
 
-mkAtLeast :: Context -> [AST] -> Int -> IO AST
-mkAtLeast _ctx [] _n = error "Z3.Base.mkAtLeast: empty list of expressions"
-mkAtLeast  ctx es  n =
-  marshal z3_mk_atleast ctx $ \f ->
-  marshalArrayLen es $ \esLen esArr ->
-  h2c n $ \n' ->
-  f esLen esArr n'
+mkAtLeast :: Foldable t => Context -> t AST -> Int -> IO AST
+mkAtLeast ctx es n
+  | null es = error "Z3.Base.mkAtLeast: empty list of expressions"
+  | otherwise = marshal z3_mk_atleast ctx $ \f ->
+      marshalArrayLen es $ \esLen esArr ->
+      h2c n $ \n' ->
+      f esLen esArr n'
 
 -- TODO: Z3_mk_pble
 
@@ -2732,11 +2736,11 @@ getReal c a = parse <$> getNumeralString c a
 
 -- TODO Z3_update_term
 
-substituteVars :: Context -> AST -> [AST] -> IO AST
+substituteVars :: Foldable t => Context -> AST -> t AST -> IO AST
 substituteVars ctx a vars =
   marshal z3_substitute_vars ctx $ \f ->
     h2c a $ \aPtr ->
-    marshalArrayLen vars $ \varsNum varsArr ->
+    marshalArrayLen (toList vars) $ \varsNum varsArr ->
       f aPtr varsNum varsArr
 
 substitute :: Context -> AST -> [(AST, AST)] -> IO AST
@@ -3054,21 +3058,22 @@ funcDeclToString = liftFun1 z3_func_decl_to_string
 -- | Convert the given benchmark into SMT-LIB formatted string.
 --
 -- The output format can be configured via 'setASTPrintMode'.
-benchmarkToSMTLibString :: Context
-                            -> String   -- ^ name
-                            -> String   -- ^ logic
-                            -> String   -- ^ status
-                            -> String   -- ^ attributes
-                            -> [AST]    -- ^ assumptions
-                            -> AST      -- ^ formula
-                            -> IO String
+benchmarkToSMTLibString :: Foldable t
+                        => Context
+                        -> String   -- ^ name
+                        -> String   -- ^ logic
+                        -> String   -- ^ status
+                        -> String   -- ^ attributes
+                        -> t AST    -- ^ assumptions
+                        -> AST      -- ^ formula
+                        -> IO String
 benchmarkToSMTLibString ctx name logic status attr assump form =
   marshal z3_benchmark_to_smtlib_string ctx $ \f ->
     withCString name $ \namePtr ->
     withCString logic $ \logicPtr ->
     withCString status $ \statusPtr ->
     withCString attr $ \attrPtr ->
-    marshalArrayLen assump $ \assumpNum assumpArr ->
+    marshalArrayLen (toList assump) $ \assumpNum assumpArr ->
     h2c form $ \formPtr ->
       f namePtr logicPtr statusPtr attrPtr assumpNum assumpArr formPtr
 
@@ -3751,13 +3756,14 @@ optimizePop :: Context -> Optimize -> IO ()
 optimizePop = liftFun1 z3_optimize_pop
 
 -- | Check consistency and produce optimal values.
-optimizeCheck :: Context  -- ^ Context
+optimizeCheck :: Foldable t
+              => Context  -- ^ Context
               -> Optimize -- ^ Optimization Context
-              -> [AST]    -- ^ Additional Assumptions
+              -> t AST    -- ^ Additional Assumptions
               -> IO Result
 optimizeCheck ctx opt ss = marshal z3_optimize_check ctx $ \f ->
   h2c opt $ \optPtr ->
-  marshalArrayLen ss $ \ssNum ssPtr ->
+  marshalArrayLen (toList ss) $ \ssNum ssPtr ->
     f optPtr ssNum ssPtr
 
 optimizeGetReasonUnknown :: Context -> Optimize -> IO String
@@ -3995,11 +4001,11 @@ solverCheck :: Context -> Solver -> IO Result
 solverCheck ctx solver = marshal z3_solver_check ctx $ h2c solver
 
 -- | Check whether the assertions in the given solver and optional assumptions are consistent or not.
-solverCheckAssumptions :: Context -> Solver -> [AST] -> IO Result
+solverCheckAssumptions :: Foldable t => Context -> Solver -> t AST -> IO Result
 solverCheckAssumptions ctx solver assump =
   marshal z3_solver_check_assumptions ctx $ \f ->
     h2c solver $ \solverPtr ->
-    marshalArrayLen assump $ \assumpNum assumpArr ->
+    marshalArrayLen (toList assump) $ \assumpNum assumpArr ->
       f solverPtr assumpNum assumpArr
 
 -- | Retrieve the model for the last 'solverCheck'.
@@ -4066,29 +4072,33 @@ withContext c f = Z3.RLock.with (lock c) $ withForeignPtr (unContext c) f
 withContextError :: Context -> (Ptr Z3_context -> IO r) -> IO r
 withContextError c f = withContext c $ \cPtr -> checkError cPtr (f cPtr)
 
-marshalArray :: (Marshal h c, Storable c) => [h] -> (Ptr c -> IO a) -> IO a
-marshalArray hs f = hs2cs hs $ \cs -> withArray cs f
+marshalArray :: (Foldable t, Marshal h c, Storable c) => t h -> (Ptr c -> IO a) -> IO a
+marshalArray hs f = hs2cs (toList hs) $ \cs -> withArray (toList cs) f
 
-marshalArrayLen :: (Marshal h c, Storable c, Integral i) =>
-    [h] -> (i -> Ptr c -> IO a) -> IO a
+marshalArrayLen :: (Foldable t, Marshal h c, Storable c, Integral i) => t h -> (i -> Ptr c -> IO a) -> IO a
 marshalArrayLen hs f =
-  hs2cs hs $ \cs -> withArrayLen cs $ \n -> f (fromIntegral n)
+  hs2cs (toList hs) $ \cs -> withArrayLen (toList cs) $ \n -> f (fromIntegral n)
 
 -- marshalMaybeArray :: (Marshal h c, Storable c) => Maybe [h] -> (Ptr c -> IO a) -> IO a
 -- marshalMaybeArray Nothing   f = f nullPtr
 -- marshalMaybeArray (Just hs) f = marshalArray hs f
 
-liftAstN_err :: String
-            -> (Ptr Z3_context -> CUInt -> Ptr (Ptr Z3_ast) -> IO (Ptr Z3_ast))
-            -> Context -> [AST] -> IO AST
-liftAstN_err s _ _ [] = error s
-liftAstN_err _ f c es = marshal f c $ marshalArrayLen es
+liftAstN_err :: Foldable t
+             => String
+             -> (Ptr Z3_context -> CUInt -> Ptr (Ptr Z3_ast) -> IO (Ptr Z3_ast))
+             -> Context
+             -> t AST
+             -> IO AST
+liftAstN_err s f c es
+  | null es = error s
+  | otherwise = marshal f c $ marshalArrayLen es
 {-# INLINE liftAstN_err #-}
 
-liftAstN :: (Ptr Z3_context -> IO (Ptr Z3_ast))
+liftAstN :: Foldable t
+         => (Ptr Z3_context -> IO (Ptr Z3_ast))
          -> (Ptr Z3_context -> CUInt -> Ptr (Ptr Z3_ast) -> IO (Ptr Z3_ast))
-         -> Context -> [AST] -> IO AST
-liftAstN s f c = maybe (liftFun0 s c) (liftAstN1 f c) . nonEmpty
+         -> Context -> t AST -> IO AST
+liftAstN s f c = maybe (liftFun0 s c) (liftAstN1 f c) . nonEmpty . toList
 {-# INLINE liftAstN #-}
 
 liftAstN1 :: (Ptr Z3_context -> CUInt -> Ptr (Ptr Z3_ast) -> IO (Ptr Z3_ast))
@@ -4101,7 +4111,7 @@ class Marshal h c where
   h2c :: h -> (c -> IO r) -> IO r
 
 hs2cs :: Marshal h c => [h] -> ([c] -> IO r) -> IO r
-hs2cs []     f = f []
+hs2cs [] f = f []
 hs2cs (h:hs) f =
   h2c h $ \c ->
   hs2cs hs $ \cs -> f (c:cs)
