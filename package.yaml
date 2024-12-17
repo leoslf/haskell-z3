@@ -1,0 +1,124 @@
+name:                z3
+version:             411.0.1
+github:              "IagoAbal/haskell-z3"
+license:             BSD3
+author:              Iago Abal <mail@iagoabal.eu>,
+                     David Castro <david.castro.dcp@gmail.com>
+maintainer:          Iago Abal <mail@iagoabal.eu>
+copyright:           2012-2022, Iago Abal, David Castro
+
+extra-source-files:
+- README.md
+- CHANGES.md
+- HACKING.md
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description: |
+  Bindings for the Z3 4./x/ Theorem Prover (<https://github.com/Z3Prover/z3>).
+  .
+  * "Z3.Base.C" provides the raw foreign imports from Z3's C API.
+  .
+  * "Z3.Base" does the marshaling of values between Haskell and C,
+  and transparently handles reference counting of Z3 objects for you.
+  .
+  * "Z3.Monad" provides a convenient monadic wrapper for the common usage scenario.
+  .
+  Examples: <https://github.com/IagoAbal/haskell-z3/tree/master/examples>
+  .
+  Changelog: <https://github.com/IagoAbal/haskell-z3/blob/master/CHANGES.md>
+  .
+  Installation:
+  .
+  * /Unix-like/: Just be sure to use the standard locations for
+  dynamic libraries (\/usr\/lib) and header files (\/usr\/include),
+  or else use the --extra-lib-dirs and --extra-include-dirs Cabal flags.
+  .
+  (Hackage reports a build failure because Z3's library is missing.)
+
+category: Math, SMT, Theorem Provers, Formal Methods, Bit vectors
+
+verbatim:
+  cabal-version: ">= 1.10"
+
+dependencies:
+- base >= 4.5 && < 5
+- containers
+- transformers >= 0.2
+
+when:
+- condition: impl(ghc < 8)
+  dependencies:
+  - semigroups >= 0.5
+
+ghc-options: []
+
+default-extensions:
+- FlexibleInstances
+- FlexibleContexts
+- ForeignFunctionInterface
+- MultiParamTypeClasses
+- LambdaCase
+- ScopedTypeVariables
+
+other-extensions:
+- CPP
+- DeriveDataTypeable
+- EmptyDataDecls
+- GeneralizedNewtypeDeriving
+- PatternGuards
+
+flags:
+  examples:
+    description: Build examples.
+    manual: true
+    default: false
+
+library:
+  source-dirs: src
+  ghc-options:
+  - -Wall
+  build-tools:
+  - hsc2hs
+
+  when:
+  # In OS X libz3 is linked statically against libgomp.
+  # In Windows Z3 is compiled using MS C++.
+  - condition: os(darwin) || os(windows)
+    then:
+      extra-libraries: z3
+    else:
+      extra-libraries: gomp z3 gomp
+
+executables:
+  examples:
+    main:                Main.hs
+    source-dirs:         examples
+    ghc-options: []
+    dependencies:
+    - z3
+    when:
+    - condition: flag(examples)
+      then:
+        buildable: true
+      else:
+        buildable: false
+
+tests:
+  z3-test:
+    main:               Spec.hs
+    source-dirs:
+    - test
+    - examples
+    ghc-options:
+    - -Wall
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - z3
+    - hspec >= 2.1
+    - QuickCheck >= 2.5.1
+    build-tools:
+    - hspec-discover >= 2.8

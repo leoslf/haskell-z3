@@ -522,6 +522,7 @@ module Z3.Monad
   , optimizeGetHelp
   , optimizeGetAssertions
   , optimizeGetObjectives
+  , optimizeWithModel
 
   -- * Solvers
   , solverGetHelp
@@ -2371,7 +2372,7 @@ evalBv :: MonadZ3 z3 => Bool -- ^ signed?
 evalBv = liftFun3 Base.evalBv
 
 -- | Evaluate a collection of AST nodes in the given model.
-evalT :: (MonadZ3 z3,Traversable t) => Model -> t AST -> z3 (Maybe (t AST))
+evalT :: (MonadZ3 z3, Traversable t) => Model -> t AST -> z3 (Maybe (t AST))
 evalT = liftFun2 Base.evalT
 
 -- | Run a evaluation function on a 'Traversable' data structure of 'AST's
@@ -2983,7 +2984,10 @@ optimizePush = liftOptimize0 Base.optimizePush
 optimizePop :: MonadOptimize z3 => z3 ()
 optimizePop = liftOptimize0 Base.optimizePop
 
-optimizeCheck :: MonadOptimize z3 => [AST] -> z3 Result
+-- | Check consistency and produce optimal values.
+optimizeCheck :: MonadOptimize z3
+              => [AST]      -- ^ Additional Assumptions
+              -> z3 Result
 optimizeCheck = liftOptimize1 Base.optimizeCheck
 
 optimizeGetReasonUnknown :: MonadOptimize z3 => z3 String
@@ -3027,6 +3031,17 @@ optimizeGetAssertions = liftOptimize0 Base.optimizeGetAssertions
 
 optimizeGetObjectives :: MonadOptimize z3 => z3 [AST]
 optimizeGetObjectives = liftOptimize0 Base.optimizeGetObjectives
+
+optimizeWithModel :: MonadOptimize z3
+                  => [AST]                -- ^ Additional Assumptions
+                  -> (Base.Model -> z3 a) -- ^ Extract Results
+                  -> z3 (Either String a)
+optimizeWithModel assumptions f = optimizeCheck assumptions >>= \case
+  Sat -> do
+    model <- optimizeGetModel
+    Right <$> f model
+  Unsat -> pure $ Left "Unsat"
+  _ -> Left <$> optimizeGetReasonUnknown
 
 ---------------------------------------------------------------------
 -- * Solvers
@@ -3208,10 +3223,9 @@ getModel = solverCheckAndGetModel
 -- withModel $ \\m ->
 --   fromJust \<$\> evalInt m x
 -- @
-withModel :: (Applicative z3, MonadZ3 z3) =>
-                (Base.Model -> z3 a) -> z3 (Result, Maybe a)
+withModel :: (Applicative z3, MonadZ3 z3) => (Base.Model -> z3 a) -> z3 (Result, Maybe a)
 withModel f = do
- (r,mb_m) <- getModel
+ (r, mb_m) <- getModel
  mb_e <- T.traverse f mb_m
  return (r, mb_e)
 

@@ -13,10 +13,12 @@ import Text.Printf
 import Debug.Trace
 
 import Z3.Monad
+import Z3.Monad.Operators
 
 -- Credits to 18.310A Principles of Discrete Applied Mathematics by Prof Michel Goemans at MIT
 -- SEE: "Lecture notes on linear programming.", https://math.mit.edu/~goemans/18310S15/18310A.html
-run = evalZ3 $ do
+example :: Z3 (Either String (Rational, Rational, Rational))
+example = do
   {-
     Let
       x_t = number of tables made per week
@@ -41,34 +43,27 @@ run = evalZ3 $ do
   x_c <- mkFreshRealVar "x_c"
 
   -- non-negative constraints
-  optimizeAssert =<< mkGe x_t zero
-  optimizeAssert =<< mkGe x_c zero
+  optimizeAssert =<< pure x_t |>=| fromRational 0
+  optimizeAssert =<< pure x_c |>=| fromRational 0
 
   -- total work time
-  optimizeAssert =<< mkGe fourty =<< mkAdd =<< sequence [mkMul [six, x_t], mkMul [three, x_c]]
+  optimizeAssert =<< pure six * pure x_t + pure three * pure x_c |>=| pure fourty
 
   -- customer demand
-  optimizeAssert =<< mkGe x_c =<< mkMul [three, x_t]
+  optimizeAssert =<< pure x_c |>=| fromRational 0
 
   -- storage space
-  optimizeAssert =<< mkGe four =<< mkAdd =<< (:[x_t]) <$> mkDiv x_c four
+  optimizeAssert =<< pure x_c / mkRational 4 + pure x_t |>=| fromRational 0
 
   -- objective
-  objective <- mkAdd =<< sequence [mkMul [thirty, x_t], mkMul [ten, x_c]]
-  -- specify minimization
-  optimizeMaximize objective
+  profit <- pure thirty * pure x_t + pure ten * pure x_c
+  -- specify maximization
+  optimizeMaximize profit
 
-  optimizeCheck [] >>= \case
-    Sat -> do
-      model <- optimizeGetModel
-      profit :: Double <- fromRational <$> fromJust <$> evalReal model objective
-      tables :: Double <- fromRational <$> fromJust <$> evalReal model x_t
-      chairs :: Double <- fromRational <$> fromJust <$> evalReal model x_c
-      liftIO $ printf "tables (x_t): %f, chairs (x_c): %f, profit: %f" tables chairs profit
-    Unsat -> do
-      traceShowM =<< optimizeGetUnsatCore
-      error "Unsat"
-    _ -> do
-      error <$> optimizeGetReasonUnknown
+  optimizeWithModel [] $ \model -> do
+    let evalReal' variable = fromJust <$> evalReal model variable
+    (,,) <$> evalReal' profit <*> evalReal' x_t <*> evalReal' x_c
 
+run :: IO (Either String (Rational, Rational, Rational))
+run = evalZ3 example
 

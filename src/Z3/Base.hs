@@ -3712,6 +3712,7 @@ mkFpaToFpIntReal = liftFun4 z3_mk_fpa_to_fp_int_real
 ---------------------------------------------------------------------
 -- Optimization facilities
 
+-- | Optimization Context
 newtype Optimize = Optimize { unOptimize :: ForeignPtr Z3_optimize }
     deriving Eq
 
@@ -3749,7 +3750,11 @@ optimizePush = liftFun1 z3_optimize_push
 optimizePop :: Context -> Optimize -> IO ()
 optimizePop = liftFun1 z3_optimize_pop
 
-optimizeCheck :: Context -> Optimize -> [AST] -> IO Result
+-- | Check consistency and produce optimal values.
+optimizeCheck :: Context  -- ^ Context
+              -> Optimize -- ^ Optimization Context
+              -> [AST]    -- ^ Additional Assumptions
+              -> IO Result
 optimizeCheck ctx opt ss = marshal z3_optimize_check ctx $ \f ->
   h2c opt $ \optPtr ->
   marshalArrayLen ss $ \ssNum ssPtr ->
